@@ -1,9 +1,9 @@
 {
 	"authors": [
-		"Lubov"
+		"Константин Шмирко"
 	],
-	"copyright": "Copyright © 2020, Lubov",
-	"description": "Simple test",
-	"license": "GPL",
-	"name": "test"
+	"copyright": "Copyright © 2020, Константин Шмирко",
+	"description": "Retrive relative humidity over thr water from lidar measurements.",
+	"license": "proprietary",
+	"name": "calculatehumidity"
 }

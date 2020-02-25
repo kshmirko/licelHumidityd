@@ -4,6 +4,8 @@ import std.array;
 import std.uni : isWhite;
 import std.conv;
 import std.stdio;
+import std.string;
+import std.file;
 
 
 enum EDatasetType {
@@ -42,15 +44,18 @@ class LicelProfile {
 	@property int nShots(){return m_nShots;}
 	@property double discrLevel(){return m_discrLevel;}
 	@property int deviceID(){return m_deviceID;}
-	
+	@property uint[] data(){return m_data;}
+	@property uint[] data(uint[]value){return m_data=value;}
 	this(string dataline){
 		parseLine(dataline);
 	}
 	
 private:
+	
+	// Разбирает строку с ткустом на лексемы
 	void parseLine(string dataline){
 		auto items=dataline.split();
-		writeln(items);
+		//writeln(items);
 		m_isActive = cast(bool)(parse!int(items[0]));
 		m_datsetType = cast(EDatasetType)(parse!int(items[1]));
 		m_nlaser = parse!int(items[2]);
@@ -89,18 +94,84 @@ private:
 
 class LicelFile{
 	
+	@property LicelProfile[] Profiles(){return m_Profiles;} 
+	
 	this(string fname){
-		
+		LoadFile(fname);
 	}
 	
 private:
+	void LoadFile(string fname){
+		if (exists(fname)){
+			File fin = File(fname, "rb");
+			scope(exit) fin.close();
+			m_fname = strip(fin.readln());
+			
+			auto tmp = strip(fin.readln()).split();
+			m_measurementSite = tmp[0];
+			auto tmp1 = tmp[1].split('/');
+			auto tmp2 = tmp[2].split(':');
+			m_measurementStartTime = DateTime(parse!int(tmp1[2]), parse!int(tmp1[1]), parse!int(tmp1[0]),
+				parse!int(tmp2[0]),parse!int(tmp2[1]),parse!int(tmp2[2]));
+			
+			tmp1 = tmp[3].split('/');
+			tmp2 = tmp[4].split(':');
+			m_measurementStopTime = DateTime(parse!int(tmp1[2]), parse!int(tmp1[1]), parse!int(tmp1[0]),
+				parse!int(tmp2[0]),parse!int(tmp2[1]),parse!int(tmp2[2]));
+			
+			m_altitudeAboveSeaLevel = parse!double(tmp[5]);
+			m_longitude = parse!double(tmp[6]);
+			m_latitude = parse!double(tmp[7]);
+			m_zenith=parse!double(tmp[8]);
+			
+			tmp = strip(fin.readln()).split();
+			m_nLaser1Shots = parse!int(tmp[0]);
+			m_laser1Freq = parse!int(tmp[1]);
+			m_nLaser2Shots = parse!int(tmp[2]);
+			m_laser2Freq = parse!int(tmp[3]);
+			m_nDatasets = parse!int(tmp[4]);
+			m_nLaser3Shots = parse!int(tmp[5]);
+			m_laser3Freq = parse!int(tmp[6]);
+			
+			m_Profiles.length = m_nDatasets;
+			for(int i=0; i<m_nDatasets; i++){
+				auto tmp_0=strip(fin.readln());
+				m_Profiles[i] = new LicelProfile(tmp_0);
+			}
+			fin.readln();
+			auto crlf = new byte[2];
+			for(int i=0; i<m_nDatasets; i++){
+				auto profile = fin.rawRead(new uint[m_Profiles[i].nDataPoints]);
+				fin.rawRead(crlf);
+				m_Profiles[i].data = profile;
+			}
+			
+			
+		}
+		
+	}
+	
+	
 	string m_fname;
 	string m_measurementSite;
 	DateTime m_measurementStartTime, m_measurementStopTime;
 	double m_altitudeAboveSeaLevel, m_longitude, m_latitude, 
 		m_zenith, m_azimuth;
-	int m_nLaser1Shots, m_Laser1Freq, m_nLaser2Shots, m_Laser2Freq, m_nDatasets,
-		m_nLaser3Shots, m_Laser3Freq;
+	int m_nLaser1Shots, m_laser1Freq, m_nLaser2Shots, m_laser2Freq, m_nDatasets,
+		m_nLaser3Shots, m_laser3Freq;
 		
-	LicelProfile[string] m_Profiles;
+	LicelProfile[] m_Profiles;
+}
+
+
+alias LicelPack = LicelFile[string];
+
+LicelPack LoadPackage(string[] files){
+	LicelPack ret;
+	
+	foreach(fname; files){
+		ret[fname] = new LicelFile(fname);
+	}
+	
+	return ret;
 }
